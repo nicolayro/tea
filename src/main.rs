@@ -7,21 +7,50 @@ enum Action {
     MoveDown,
     MoveLeft,
     MoveRight,
+
+    ChangeMode(Mode)
 }
 
-fn handle_event(event: Event) -> Option<Action> {
-    match event {
-        Event::Key(event) => {
-            match event.code {
-                KeyCode::Char('q') => Some(Action::Quit),
-                KeyCode::Char('h') => Some(Action::MoveLeft),
-                KeyCode::Char('j') => Some(Action::MoveDown),
-                KeyCode::Char('k') => Some(Action::MoveUp),
-                KeyCode::Char('l') => Some(Action::MoveRight),
+#[derive(Debug)]
+enum Mode {
+    Normal,
+    Insert
+}
+
+fn handle_event(event: Event, mode: &Mode) -> Option<Action> {
+    match mode {
+        Mode::Normal => {
+            match event {
+                Event::Key(event) => {
+                    match event.code {
+                        KeyCode::Char('q') => Some(Action::Quit),
+                        KeyCode::Char('h') => Some(Action::MoveLeft),
+                        KeyCode::Char('j') => Some(Action::MoveDown),
+                        KeyCode::Char('k') => Some(Action::MoveUp),
+                        KeyCode::Char('l') => Some(Action::MoveRight),
+                        KeyCode::Char('i') => Some(Action::ChangeMode(Mode::Insert)),
+                        _ => None,
+                    }
+                }
+                _ => None,
+            }
+        },
+        Mode::Insert => {
+            match event {
+                Event::Key(event) => {
+                    match event.code {
+                        KeyCode::Char('q') => Some(Action::Quit),
+                        KeyCode::Char('h') => Some(Action::MoveLeft),
+                        KeyCode::Char('j') => Some(Action::MoveDown),
+                        KeyCode::Char('k') => Some(Action::MoveUp),
+                        KeyCode::Char('l') => Some(Action::MoveRight),
+                        KeyCode::Esc => Some(Action::ChangeMode(Mode::Normal)),
+                        _ => None,
+                    }
+                }
                 _ => None,
             }
         }
-        _ => None,
     }
 }
 
@@ -53,6 +82,8 @@ impl Cursor {
 }
 
 fn run_editor<T: Write>(file: String, mut stdout: T, mut c: Cursor) -> io::Result<()>  {
+    let mut mode = Mode::Normal;
+
     terminal::enable_raw_mode()?;
     stdout.execute(terminal::EnterAlternateScreen)?;
 
@@ -64,16 +95,20 @@ fn run_editor<T: Write>(file: String, mut stdout: T, mut c: Cursor) -> io::Resul
     stdout.flush()?;
 
     loop {
+        stdout.queue(cursor::MoveTo(0, terminal::size()?.1))?;
+        stdout.queue(style::Print(format!("-- {:?} --", mode)))?;
+
         stdout.queue(cursor::MoveTo(c.x, c.y))?;
         stdout.flush()?;
 
-        if let Some(action) = handle_event(read()?) {
+        if let Some(action) = handle_event(read()?, &mode) {
             match action {
                 Action::Quit => break,
                 Action::MoveUp => c.move_up(),
                 Action::MoveDown => c.move_down(),
                 Action::MoveLeft => c.move_left(),
-                Action::MoveRight => c.move_right()
+                Action::MoveRight => c.move_right(),
+                Action::ChangeMode(new_mode) => mode = new_mode,
             }
         }
     }
