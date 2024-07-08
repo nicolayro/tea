@@ -1,5 +1,5 @@
-use std::io::{self, stdout, Write};
-use crossterm::{cursor, event::{read, Event, KeyCode}, terminal, ExecutableCommand, QueueableCommand};
+use std::{fs::File, io::{self, stdout, Read, Stdout, Write}};
+use crossterm::{cursor, event::{read, Event, KeyCode}, style, terminal, ExecutableCommand, QueueableCommand};
 
 enum Action {
     Quit,
@@ -52,15 +52,16 @@ impl Cursor {
     }
 }
 
-fn main() -> io::Result<()> {
-    let mut stdout = stdout();
-    let mut c = Cursor {
-        x: 0,
-        y: 0
-    };
-
+fn run_editor<T: Write>(file: String, mut stdout: T, mut c: Cursor) -> io::Result<()>  {
     terminal::enable_raw_mode()?;
     stdout.execute(terminal::EnterAlternateScreen)?;
+
+    // Write file
+    for (i, line) in file.lines().enumerate() {
+        stdout.queue(cursor::MoveTo(0, i as u16))?;
+        stdout.queue(style::Print(line))?;
+    };
+    stdout.flush()?;
 
     loop {
         stdout.queue(cursor::MoveTo(c.x, c.y))?;
@@ -79,6 +80,25 @@ fn main() -> io::Result<()> {
 
     stdout.execute(terminal::LeaveAlternateScreen)?;
     terminal::disable_raw_mode().expect("Unable to disable raw mode");
-
     Ok(())
+}
+
+fn read_file(filename: &str) -> String {
+    let mut file = File::open(filename)
+        .expect("Unable to open file.");
+
+    let mut contents = String::new();
+    file.read_to_string(&mut contents)
+        .expect("Unable to read file into String");
+
+    contents
+}
+
+fn main() {
+    let stdout = stdout();
+    let cursor = Cursor::new(0, 0);
+
+    let file = read_file("./main.c");
+
+    run_editor(file, stdout, cursor).unwrap();
 }
