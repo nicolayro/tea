@@ -1,3 +1,3 @@
-# Karl Text Editor
+# tea - Text Editor Applciation
 
-Modal terminal text editor
+tea is a modal terminal text editor
