@@ -46,13 +46,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "karl"
-version = "0.1.0"
-dependencies = [
- "crossterm",
-]
-
-[[package]]
 name = "libc"
 version = "0.2.155"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -159,6 +152,13 @@ name = "smallvec"
 version = "1.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3c5e1a9a646d36c3599cd173a41282daf47c44583ad367b8e6837255952e5c67"
+
+[[package]]
+name = "tea"
+version = "0.1.0"
+dependencies = [
+ "crossterm",
+]
 
 [[package]]
 name = "wasi"
