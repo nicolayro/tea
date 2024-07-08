@@ -1,4 +1,4 @@
-use std::{fs::File, io::{self, stdout, Read, Stdout, Write}};
+use std::{env, fs::File, io::{self, stdout, Read, Write}};
 use crossterm::{cursor, event::{read, Event, KeyCode}, style, terminal, ExecutableCommand, QueueableCommand};
 
 enum Action {
@@ -98,7 +98,14 @@ fn main() {
     let stdout = stdout();
     let cursor = Cursor::new(0, 0);
 
-    let file = read_file("./main.c");
+    let args: Vec<String> = env::args().collect();
+    let filename = if args.len() >= 2 {
+        &args[1]
+    } else {
+        "main.c"
+    };
+
+    let file = read_file(filename);
 
     run_editor(file, stdout, cursor).unwrap();
 }
