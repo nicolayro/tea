@@ -95,8 +95,14 @@ fn run_editor<T: Write>(file: String, mut stdout: T, mut c: Cursor) -> io::Resul
     stdout.flush()?;
 
     loop {
-        stdout.queue(cursor::MoveTo(0, terminal::size()?.1))?;
+        let size = terminal::size()?;
+        // Display mode
+        stdout.queue(cursor::MoveTo(0, size.1))?;
         stdout.queue(style::Print(format!("-- {:?} --", mode)))?;
+
+        // Display pos
+        stdout.queue(cursor::MoveTo(size.0 - 10, size.1))?;
+        stdout.queue(style::Print(format!("{}, {}", c.x, c.y)))?;
 
         stdout.queue(cursor::MoveTo(c.x, c.y))?;
         stdout.flush()?;
