@@ -8,6 +8,8 @@ enum Action {
     MoveLeft,
     MoveRight,
 
+    InsertChar(char),
+
     ChangeMode(Mode)
 }
 
@@ -39,11 +41,7 @@ fn handle_event(event: Event, mode: &Mode) -> Option<Action> {
             match event {
                 Event::Key(event) => {
                     match event.code {
-                        KeyCode::Char('q') => Some(Action::Quit),
-                        KeyCode::Char('h') => Some(Action::MoveLeft),
-                        KeyCode::Char('j') => Some(Action::MoveDown),
-                        KeyCode::Char('k') => Some(Action::MoveUp),
-                        KeyCode::Char('l') => Some(Action::MoveRight),
+                        KeyCode::Char(c) => Some(Action::InsertChar(c)),
                         KeyCode::Esc => Some(Action::ChangeMode(Mode::Normal)),
                         _ => None,
                     }
@@ -83,19 +81,19 @@ impl Cursor {
 
 fn run_editor<T: Write>(file: String, mut stdout: T, mut c: Cursor) -> io::Result<()>  {
     let mut mode = Mode::Normal;
+    let mut lines: Vec<String> = file.lines().map(|x| x.to_string()).collect();
 
     terminal::enable_raw_mode()?;
     stdout.execute(terminal::EnterAlternateScreen)?;
 
-    // Write file
-    for (i, line) in file.lines().enumerate() {
-        stdout.queue(cursor::MoveTo(0, i as u16))?;
-        stdout.queue(style::Print(line))?;
-    };
-    stdout.flush()?;
-
     loop {
         let size = terminal::size()?;
+        // Display file
+        for (i, line) in lines.iter().enumerate() {
+            stdout.queue(cursor::MoveTo(0, i as u16))?;
+            stdout.queue(style::Print(line))?;
+        }
+
         // Display mode
         stdout.queue(cursor::MoveTo(0, size.1))?;
         stdout.queue(style::Print(format!("-- {:?} --", mode)))?;
@@ -115,6 +113,16 @@ fn run_editor<T: Write>(file: String, mut stdout: T, mut c: Cursor) -> io::Resul
                 Action::MoveLeft => c.move_left(),
                 Action::MoveRight => c.move_right(),
                 Action::ChangeMode(new_mode) => mode = new_mode,
+                Action::InsertChar(ch) => {
+                    if let Some(line) = lines.get_mut(c.y as usize) {
+                        if c.x > 0 && c.x < line.len() as u16 {
+                            line.insert(c.x as usize, ch);
+                            c.move_right();
+                        }
+                    } else {
+                        print!("Unable to {}", ch);
+                    }
+                }
             }
         }
     }
