@@ -2,6 +2,12 @@
 
 tea is a modal terminal text editor
 
+## Usage
+
+```sh
+tea <filename>
+```
+
 ## Planned features
 
 - [x] Open file in buffer
