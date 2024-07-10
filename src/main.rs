@@ -9,6 +9,8 @@ enum Action {
     MoveRight,
 
     InsertChar(char),
+    RemoveChar,
+    NewLine,
 
     ChangeMode(Mode)
 }
@@ -43,6 +45,8 @@ fn handle_event(event: Event, mode: &Mode) -> Option<Action> {
                     match event.code {
                         KeyCode::Char(c) => Some(Action::InsertChar(c)),
                         KeyCode::Esc => Some(Action::ChangeMode(Mode::Normal)),
+                        KeyCode::Backspace => Some(Action::RemoveChar),
+                        KeyCode::Enter => Some(Action::NewLine),
                         _ => None,
                     }
                 }
@@ -63,19 +67,19 @@ impl Cursor {
     }
 
     pub fn move_up(&mut self) {
-        self.y = self.y.saturating_sub(1)
+        self.y = self.y.saturating_sub(1);
     }
 
     pub fn move_down(&mut self) {
-        self.y += 1
+        self.y += 1;
     }
 
     pub fn move_left(&mut self) {
-        self.x = self.x.saturating_sub(1)
+        self.x = self.x.saturating_sub(1);
     }
 
     pub fn move_right(&mut self) {
-        self.x += 1
+        self.x += 1;
     }
 }
 
@@ -87,7 +91,10 @@ fn run_editor<T: Write>(file: String, mut stdout: T, mut c: Cursor) -> io::Resul
     stdout.execute(terminal::EnterAlternateScreen)?;
 
     loop {
+        stdout.execute(terminal::Clear(terminal::ClearType::All))?;
+
         let size = terminal::size()?;
+
         // Display file
         for (i, line) in lines.iter().enumerate() {
             stdout.queue(cursor::MoveTo(0, i as u16))?;
@@ -115,12 +122,37 @@ fn run_editor<T: Write>(file: String, mut stdout: T, mut c: Cursor) -> io::Resul
                 Action::ChangeMode(new_mode) => mode = new_mode,
                 Action::InsertChar(ch) => {
                     if let Some(line) = lines.get_mut(c.y as usize) {
-                        if c.x > 0 && c.x < line.len() as u16 {
+                        if c.x < line.len() as u16 {
                             line.insert(c.x as usize, ch);
                             c.move_right();
                         }
-                    } else {
-                        print!("Unable to {}", ch);
+                    }
+                },
+                Action::RemoveChar => {
+                    if c.x == 0 {
+                        if c.y != 0 && c.y < lines.len() as u16 {
+                            let old_line = lines.remove(c.y as usize);
+                            if let Some(line) = lines.get_mut((c.y-1) as usize) {
+                                c.move_up();
+                                c.x = line.len() as u16;
+                                line.push_str(&old_line);
+                            }
+                        }
+                    } else if let Some(line) = lines.get_mut(c.y as usize) {
+                        if c.x < line.len() as u16 {
+                            c.move_left();
+                            line.remove(c.x as usize);
+                        }
+                    }
+                },
+                Action::NewLine => {
+                    if c.y < lines.len() as u16 {
+                        let line = lines.remove(c.y as usize);
+                        let (left, right) = line.split_at(c.x as usize);
+                        lines.insert(c.y as usize, right.to_string());
+                        lines.insert(c.y as usize, left.to_string());
+                        c.x = 0;
+                        c.move_down();
                     }
                 }
             }
