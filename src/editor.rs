@@ -150,7 +150,7 @@ impl Editor {
                     Action::ChangeMode(new_mode) => self.mode = new_mode,
                     Action::InsertChar(ch) => {
                         if let Some(line) = self.lines.get_mut(self.cursor.y as usize) {
-                            if self.cursor.x < line.len() as u16 {
+                            if self.cursor.x <= line.len() as u16 {
                                 line.insert(self.cursor.x as usize, ch);
                                 self.cursor.move_right();
                             }
@@ -167,14 +167,14 @@ impl Editor {
                                 }
                             }
                         } else if let Some(line) = self.lines.get_mut(self.cursor.y as usize) {
-                            if self.cursor.x < line.len() as u16 {
+                            if self.cursor.x <= line.len() as u16 {
                                 self.cursor.move_left();
                                 line.remove(self.cursor.x as usize);
                             }
                         }
                     },
                     Action::NewLine => {
-                        if self.cursor.y < self.lines.len() as u16 {
+                        if self.cursor.y <= self.lines.len() as u16 {
                             let line = self.lines.remove(self.cursor.y as usize);
                             let (left, right) = line.split_at(self.cursor.x as usize);
                             self.lines.insert(self.cursor.y as usize, right.to_string());
