@@ -1,4 +1,4 @@
-use std::io::{self, Stdout, Write};
+use std::{fs, io::{self, Stdout, Write}};
 
 use crossterm::{cursor, event, style, terminal, ExecutableCommand, QueueableCommand};
 
@@ -22,10 +22,10 @@ enum Mode {
     Insert
 }
 
-fn handle_event(event: event::Event, mode: &Mode) -> Option<Action> {
+fn handle_event(e: event::Event, mode: &Mode) -> Option<Action> {
     match mode {
         Mode::Normal => {
-            match event {
+            match e {
                 event::Event::Key(event) => {
                     match event.code {
                         event::KeyCode::Char('q') => Some(Action::Quit),
@@ -41,7 +41,7 @@ fn handle_event(event: event::Event, mode: &Mode) -> Option<Action> {
             }
         },
         Mode::Insert => {
-            match event {
+            match e {
                 event::Event::Key(event) => {
                     match event.code {
                         event::KeyCode::Char(c) => Some(Action::InsertChar(c)),
@@ -133,7 +133,7 @@ impl Editor {
         Ok(())
     }
 
-    pub fn run(&mut self) -> io::Result<()> {
+    pub fn run(&mut self, filename: Option<String>) -> io::Result<()> {
         terminal::enable_raw_mode()?;
         self.out.execute(terminal::EnterAlternateScreen)?;
 
@@ -187,8 +187,31 @@ impl Editor {
             }
         }
 
+        self.out.execute(terminal::Clear(terminal::ClearType::All))?;
+
+        self.out.queue(cursor::MoveTo(2, 2))?;
+        self.out.queue(style::Print(format!("Write to file?")))?;
+        self.out.flush()?;
+
+        let save = match event::read()? {
+            event::Event::Key(event) => {
+                match event.code {
+                    event::KeyCode::Char('w') => true,
+                    _ => false,
+                }
+            }
+            _ => false,
+        };
+
+        if save  {
+            let file = filename.unwrap_or(String::from("main.c"));
+            fs::write(file, self.lines.join("\n"))?;
+        }
+
+        self.out.flush()?;
+
         self.out.execute(terminal::LeaveAlternateScreen)?;
-        terminal::disable_raw_mode().expect("Unable to disable raw mode");
+        terminal::disable_raw_mode()?;
 
         Ok(())
     }

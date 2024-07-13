@@ -6,17 +6,21 @@ mod editor;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
+
     let filename = if args.len() >= 2 {
-        &args[1]
+        Some(&args[1])
     } else {
-        "main.c"
+        None
     };
 
     let out = stdout();
-    let content = read_file(filename);
+    let content = match filename {
+        Some(filename) => read_file(filename),
+        None => String::new(),
+    };
     let mut editor = Editor::new(out, content);
 
-    editor.run().expect("Error while running editor");
+    editor.run(filename.to_string()).expect("Error while running editor");
 }
 
 fn read_file(filename: &str) -> String {
@@ -29,4 +33,3 @@ fn read_file(filename: &str) -> String {
 
     contents
 }
-

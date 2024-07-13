@@ -17,9 +17,9 @@ tea <filename>
     - [x] simple vim-like navigation
     - [ ] full vim motions
 - [ ] Insert mode
-    - [ ] Insert new characters
-    - [ ] Backspace
-    - [ ] new line
+    - [x] Insert new characters
+    - [x] Backspace
+    - [x] new line
 - [ ] Command mode
     - [ ] quit
     - [ ] save
