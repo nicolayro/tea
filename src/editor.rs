@@ -133,7 +133,7 @@ impl Editor {
         Ok(())
     }
 
-    pub fn run(&mut self, filename: Option<String>) -> io::Result<()> {
+    pub fn run(&mut self, filename: String) -> io::Result<()> {
         terminal::enable_raw_mode()?;
         self.out.execute(terminal::EnterAlternateScreen)?;
 
@@ -204,8 +204,7 @@ impl Editor {
         };
 
         if save  {
-            let file = filename.unwrap_or(String::from("main.c"));
-            fs::write(file, self.lines.join("\n"))?;
+            fs::write(filename, self.lines.join("\n"))?;
         }
 
         self.out.flush()?;

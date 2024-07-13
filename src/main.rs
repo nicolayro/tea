@@ -1,4 +1,4 @@
-use std::{env, fs::File, io::{stdout, Read}};
+use std::{env, fs::File, io::{stdout, Read}, process::exit};
 
 use editor::Editor;
 
@@ -7,20 +7,17 @@ mod editor;
 fn main() {
     let args: Vec<String> = env::args().collect();
 
-    let filename = if args.len() >= 2 {
-        Some(&args[1])
-    } else {
-        None
-    };
+    if args.len() != 2 {
+        println!("USAGE: tea <filename>");
+        exit(1)
+    }
 
+    let filename = &args[1];
     let out = stdout();
-    let content = match filename {
-        Some(filename) => read_file(filename),
-        None => String::new(),
-    };
+    let content = read_file(filename);
     let mut editor = Editor::new(out, content);
 
-    editor.run(filename.to_string()).expect("Error while running editor");
+    editor.run(filename).expect("Error while running editor");
 }
 
 fn read_file(filename: &str) -> String {
