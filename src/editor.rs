@@ -12,6 +12,8 @@ enum Action {
     InsertChar(char),
     RemoveChar,
     NewLine,
+    Indent,
+    Outdent,
 
     ChangeMode(Mode)
 }
@@ -34,6 +36,7 @@ fn handle_event(e: event::Event, mode: &Mode) -> Option<Action> {
                         event::KeyCode::Char('k') => Some(Action::MoveUp),
                         event::KeyCode::Char('l') => Some(Action::MoveRight),
                         event::KeyCode::Char('i') => Some(Action::ChangeMode(Mode::Insert)),
+                        event::KeyCode::Char('x') => Some(Action::RemoveChar),
                         _ => None,
                     }
                 }
@@ -42,15 +45,30 @@ fn handle_event(e: event::Event, mode: &Mode) -> Option<Action> {
         },
         Mode::Insert => {
             match e {
-                event::Event::Key(event) => {
-                    match event.code {
+                event::Event::Key(event::KeyEvent {
+                    modifiers: event::KeyModifiers::NONE,
+                    code,
+                    ..
+                }) => {
+                    match code {
                         event::KeyCode::Char(c) => Some(Action::InsertChar(c)),
                         event::KeyCode::Esc => Some(Action::ChangeMode(Mode::Normal)),
                         event::KeyCode::Backspace => Some(Action::RemoveChar),
                         event::KeyCode::Enter => Some(Action::NewLine),
+                        event::KeyCode::Tab => Some(Action::Indent),
                         _ => None,
                     }
-                }
+                },
+                event::Event::Key(event::KeyEvent {
+                    modifiers: event::KeyModifiers::SHIFT,
+                    code,
+                    ..
+                }) => {
+                    match code {
+                        event::KeyCode::Tab => Some(Action::Outdent),
+                        _ => None,
+                    }
+                },
                 _ => None,
             }
         }
@@ -86,6 +104,14 @@ impl Cursor {
     pub fn pos(&self) -> (u16, u16) {
         (self.x, self.y)
     }
+
+    pub fn pos_as_usize(&self) -> (usize, usize) {
+        (self.x as usize, self.y as usize)
+    }
+}
+
+struct Settings {
+    tab_size: usize,
 }
 
 pub struct Editor {
@@ -93,6 +119,7 @@ pub struct Editor {
     cursor: Cursor,
     lines: Vec<String>,  // TODO: Improve data structure
     mode: Mode,
+    settings: Settings
 }
 
 impl Editor {
@@ -102,8 +129,12 @@ impl Editor {
             cursor: Cursor::new(0, 0),
             lines: content.lines().map(|x| x.to_string()).collect(),
             mode: Mode::Normal,
+            settings: Settings {
+                tab_size: 4,
+            }
         }
     }
+
 
     fn render(&mut self) -> io::Result<()> {
         let size = terminal::size()?;
@@ -133,7 +164,7 @@ impl Editor {
         Ok(())
     }
 
-    pub fn run(&mut self, filename: String) -> io::Result<()> {
+    pub fn run(&mut self, filename: &str) -> io::Result<()> {
         terminal::enable_raw_mode()?;
         self.out.execute(terminal::EnterAlternateScreen)?;
 
@@ -164,6 +195,8 @@ impl Editor {
                                     self.cursor.move_up();
                                     self.cursor.x = line.len() as u16;
                                     line.push_str(&old_line);
+                                } else {
+                                    self.lines.insert(self.cursor.y as usize, old_line);
                                 }
                             }
                         } else if let Some(line) = self.lines.get_mut(self.cursor.y as usize) {
@@ -182,6 +215,20 @@ impl Editor {
                             self.cursor.x = 0;
                             self.cursor.move_down();
                         }
+                    },
+                    Action::Indent => {
+                        let (x, y) = self.cursor.pos_as_usize();
+                        let indent = self.settings.tab_size - (x % self.settings.tab_size);
+                        self.lines[y].insert_str(x, &" ".repeat(indent));
+                        self.cursor.x += indent as u16;
+                    }
+                    Action::Outdent => {
+                        let (x, y) = self.cursor.pos_as_usize();
+                        let indent = self.settings.tab_size - (x % self.settings.tab_size);
+                        for _ in 0..indent {
+                            self.lines[y].remove(self.cursor.x as usize);
+                            self.cursor.move_left();
+                        }
                     }
                 }
             }
@@ -189,8 +236,8 @@ impl Editor {
 
         self.out.execute(terminal::Clear(terminal::ClearType::All))?;
 
-        self.out.queue(cursor::MoveTo(2, 2))?;
-        self.out.queue(style::Print(format!("Write to file?")))?;
+        self.out.queue(cursor::MoveTo(0, 0))?;
+        self.out.queue(style::Print(format!("Write to {}?", filename)))?;
         self.out.flush()?;
 
         let save = match event::read()? {
