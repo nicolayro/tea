@@ -1,4 +1,4 @@
-use std::{fs, io::{self, Stdout, Write}};
+use std::{cmp, fs, io::{self, Stdout, Write}};
 
 use crossterm::{cursor, event, style, terminal, ExecutableCommand, QueueableCommand};
 
@@ -65,7 +65,8 @@ fn handle_event(e: event::Event, mode: &Mode) -> Option<Action> {
                     ..
                 }) => {
                     match code {
-                        event::KeyCode::Tab => Some(Action::Outdent),
+                        event::KeyCode::Char(c) => Some(Action::InsertChar(c)),
+                        event::KeyCode::BackTab => Some(Action::Outdent),
                         _ => None,
                     }
                 },
@@ -225,9 +226,10 @@ impl Editor {
                     Action::Outdent => {
                         let (x, y) = self.cursor.pos_as_usize();
                         let indent = self.settings.tab_size - (x % self.settings.tab_size);
+                        let indent = cmp::min(x, indent);
                         for _ in 0..indent {
-                            self.lines[y].remove(self.cursor.x as usize);
                             self.cursor.move_left();
+                            self.lines[y].remove(self.cursor.x as usize);
                         }
                     }
                 }
